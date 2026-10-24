@@ -123,6 +123,7 @@ button { cursor: pointer; background: none; border: 0; }
 .tabs button[aria-selected='true'] { color: var(--ink); }
 .tabs .bar { position: absolute; bottom: 0; height: 4px; background: var(--amber); transition: all .5s var(--ease); }
 
+.enter-title { font-family: var(--f-led); font-size: 46px; font-weight: 700; line-height: .9; margin-bottom: 22px; }
 .field { display: block; margin-bottom: 20px; position: relative; }
 .field .label { display: block; margin-bottom: 4px; }
 .field input, .field select {

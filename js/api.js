@@ -6,7 +6,7 @@ const MESSAGES = {
   username_taken: 'هذا الاسم مستخدم، جرّب اسم ثاني',
   bad_credentials: 'الاسم أو كلمة المرور غلط',
   weak_password: 'كلمة المرور لازم 6 أحرف على الأقل',
-  bad_username: 'الاسم من 3 إلى 24 حرف وبدون مسافات',
+  bad_username: 'الاسم من 2 إلى 24 حرف',
   not_authenticated: 'انتهت الجلسة، سجّل دخول مرة ثانية',
   forbidden: 'هاي الصفحة للمدير بس',
 };
@@ -37,6 +37,7 @@ export const hasToken = () => !!token;
 function keep(r) { token = r.token; localStorage.setItem('foregg.token', token); return r.user; }
 
 export const api = {
+  enter: (u) => rpc('foregg_enter', { p_username: u }).then(keep),
   register: (u, p, d) => rpc('foregg_register', { p_username: u, p_password: p, p_display: d || null }).then(keep),
   login: (u, p) => rpc('foregg_login', { p_username: u, p_password: p }).then(keep),
   logout: async () => {

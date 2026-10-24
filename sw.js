@@ -1,7 +1,7 @@
 // فقّاسة service worker: يشتغل بدون إنترنت + تذكيرات بالخلفية
 import { eventsBetween, kvGet, kvSet } from './js/schedule.js';
 
-const CACHE = 'foregg-v1';
+const CACHE = 'foregg-v2';
 const SHELL = ['./', 'index.html', 'css/app.css', 'js/app.js', 'js/api.js', 'js/species.js', 'js/schedule.js',
   'js/egg3d.js', 'vendor/three.module.min.js', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/badge-96.png'];
 

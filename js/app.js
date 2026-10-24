@@ -140,7 +140,7 @@ function dialSVG() {
     <text font-size="3.4" letter-spacing=".9" fill="currentColor" font-family="Readex Pro"><textPath href="#dp">37.7° · 55% · ثلاث تقليبات باليوم · واحد وعشرين يوم · 37.7° · 55% · افحص بالضوء ·</textPath></text></svg>`;
 }
 
-function viewAuth(mode = 'login') {
+function viewAuth() {
   const v = show(`
   <main class="auth">
     <div class="topstrip">
@@ -157,29 +157,17 @@ function viewAuth(mode = 'login') {
         <div class="porthole-wrap">${dialSVG()}<div class="porthole"><div class="egg-host"></div></div></div>
       </section>
       <section class="auth-form">
-        <div class="tabs" role="tablist">
-          <button role="tab" data-mode="login" aria-selected="${mode === 'login'}">دخول</button>
-          <button role="tab" data-mode="register" aria-selected="${mode === 'register'}">حساب جديد</button>
-          <span class="bar"></span>
-        </div>
+        <h2 class="enter-title">شنو اسمك؟</h2>
         <form novalidate autocomplete="on">
-          <label class="field reveal"><span class="label">اسم المستخدم</span><input name="u" autocomplete="username" required minlength="3" maxlength="24" dir="auto"></label>
-          ${mode === 'register' ? '<label class="field reveal"><span class="label">اسمك (اختياري)</span><input name="d" maxlength="40" dir="auto"></label>' : ''}
-          <label class="field reveal"><span class="label">كلمة المرور</span><input name="p" type="password" autocomplete="${mode === 'login' ? 'current-password' : 'new-password'}" required minlength="6"></label>
+          <label class="field reveal"><span class="label">اكتب اسمك وادخل مباشرة</span><input name="u" autocomplete="nickname" required minlength="2" maxlength="24" dir="auto" enterkeyhint="go"></label>
           <p class="err" role="alert"></p>
-          <button class="btn reveal" type="submit"><span>${mode === 'login' ? 'ادخل' : 'سوّي الحساب'}</span><span class="arrow">←</span></button>
-          <p class="form-note">${mode === 'login' ? 'ما عندك حساب؟ اختار «حساب جديد» فوق.' : 'كلمة المرور تنحفظ مشفّرة، محد يقدر يشوفها حتى المدير.'}</p>
+          <button class="btn reveal" type="submit"><span>ادخل</span><span class="arrow">←</span></button>
+          <p class="form-note">أول مرة؟ ينسوّى حسابك تلقائياً. بعدين اكتب نفس الاسم وترجع لفقاساتك.</p>
         </form>
       </section>
     </div>
   </main>`, { iris: false });
 
-  const bar = $('.tabs .bar', v), sel = $('[aria-selected="true"]', v);
-  requestAnimationFrame(() => {
-    const r = sel.getBoundingClientRect(), pr = sel.parentElement.getBoundingClientRect();
-    Object.assign(bar.style, { left: r.left - pr.left + 'px', width: r.width + 'px' });
-  });
-  v.querySelectorAll('[data-mode]').forEach((b) => b.onclick = () => b.dataset.mode !== mode && viewAuth(b.dataset.mode));
   const dl = $('[data-install]', v); if (dl) dl.onclick = install;
 
   const egg = mountEgg($('.porthole .egg-host', v), { seed: 11 });
@@ -193,12 +181,11 @@ function viewAuth(mode = 'login') {
     e.preventDefault();
     const f = e.target, btn = $('button[type=submit]', f), err = $('.err', f);
     err.textContent = '';
-    const u = f.u.value.trim(), p = f.p.value;
-    if (u.length < 3) return (err.textContent = 'الاسم 3 أحرف على الأقل');
-    if (p.length < 6) return (err.textContent = 'كلمة المرور 6 أحرف على الأقل');
+    const u = f.u.value.trim().replace(/s+/g, ' ');
+    if (u.length < 2) return (err.textContent = 'الاسم حرفين على الأقل');
     btn.disabled = true;
     try {
-      st.user = mode === 'login' ? await api.login(u, p) : await api.register(u, p, f.d && f.d.value);
+      st.user = await api.enter(u);
       await boot(true);
     } catch (x) {
       err.textContent = x instanceof ApiError ? x.message : 'صار خطأ';
@@ -531,7 +518,7 @@ async function viewAdmin() {
     <div class="stats"><div><span class="label">مستخدمين</span><span class="led">${rows.length}</span></div><div><span class="label">فقاسات شغالة</span><span class="led">${activeIncs.length}</span></div><div><span class="label">قريبة للفقس</span><span class="led" style="color:var(--amber)">${soon}</span></div></div>
     <div class="search"><input placeholder="ابحث باسم المستخدم" data-q></div>
     <ul class="ledger">${list()}</ul>
-    <p class="form-note" style="padding:16px">كلمات المرور محفوظة مشفّرة (bcrypt) وما تطلع هنا أبداً.</p></main>`);
+    </main>`);
   $('[data-back]', v).onclick = () => viewHome();
   $('[data-q]', v).oninput = (e) => { $('.ledger', v).innerHTML = list(e.target.value.trim().toLowerCase()); };
 }
