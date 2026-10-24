@@ -43,6 +43,7 @@ const ICONS = {
   gear: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>',
   ledger: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4zM4 9h16M4 14h16M9 4v16"/></svg>',
   x: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 5l14 14M19 5L5 19"/></svg>',
+  lock: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="11" width="14" height="10"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
   bell: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4zM10 21h4"/></svg>',
   hand: '<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M22 34V14a4 4 0 0 1 8 0v16M30 28V10a4 4 0 0 1 8 0v18M38 28V14a4 4 0 0 1 8 0v22c0 12-7 20-17 20-8 0-12-5-16-11l-6-10a4 4 0 0 1 6-5l7 7"/></svg>',
   motor: '<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="32" cy="32" r="10"/><path d="M32 8v8M32 48v8M8 32h8M48 32h8M15 15l6 6M43 43l6 6M15 49l6-6M43 21l6-6"/></svg>',
@@ -76,11 +77,16 @@ function show(html, { iris = true } = {}) {
     v.style.setProperty('--ox', lastTap.x + 'px');
     v.style.setProperty('--oy', lastTap.y + 'px');
     app.appendChild(v);
-    v.addEventListener('animationend', () => {
+    let settled = false;
+    const settle = () => {
+      if (settled) return;
+      settled = true;
       [...app.children].forEach((c) => c !== v && c.remove());
       v.classList.remove('iris-in');
       scrollTo(0, 0);
-    }, { once: true });
+    };
+    v.addEventListener('animationend', settle, { once: true });
+    setTimeout(settle, 1100); // احتياط إذا المتصفح وقّف الأنيميشن
   } else {
     app.replaceChildren(v);
   }
@@ -160,6 +166,7 @@ function viewAuth() {
         <h2 class="enter-title">شنو اسمك؟</h2>
         <form novalidate autocomplete="on">
           <label class="field reveal"><span class="label">اكتب اسمك وادخل مباشرة</span><input name="u" autocomplete="nickname" required minlength="2" maxlength="24" dir="auto" enterkeyhint="go"></label>
+          <label class="field code-field" hidden><span class="label">هذا الاسم محمي برمز · اكتب الرمز</span><input name="c" type="password" autocomplete="current-password" enterkeyhint="go"></label>
           <p class="err" role="alert"></p>
           <button class="btn reveal" type="submit"><span>ادخل</span><span class="arrow">←</span></button>
           <p class="form-note">أول مرة؟ ينسوّى حسابك تلقائياً. بعدين اكتب نفس الاسم وترجع لفقاساتك.</p>
@@ -185,13 +192,27 @@ function viewAuth() {
     if (u.length < 2) return (err.textContent = 'الاسم حرفين على الأقل');
     btn.disabled = true;
     try {
-      st.user = await api.enter(u);
+      st.user = await api.enter(u, f.c.value);
       await boot(true);
     } catch (x) {
       err.textContent = x instanceof ApiError ? x.message : 'صار خطأ';
       btn.disabled = false;
+      if (x.code === 'code_required' || x.code === 'bad_code') {
+        const cf = $('.code-field', f);
+        cf.hidden = false;
+        cf.classList.add('reveal');
+        f.c.select();
+        f.c.focus();
+      }
     }
   };
+  // تغيير الاسم يرجّع حقل الرمز مخفي
+  $('form', v).u.addEventListener('input', (e) => {
+    const f = e.target.form;
+    $('.code-field', f).hidden = true;
+    f.c.value = '';
+    $('.err', f).textContent = '';
+  });
 }
 
 /* ---------- HOME ---------- */
@@ -212,7 +233,7 @@ function viewHome(opts = {}) {
         <span class="who">${esc(st.user.display_name || st.user.username)}</span>
         ${st.user.is_admin ? `<button class="icon-btn" data-go="admin" title="لوحة المدير" aria-label="لوحة المدير">${ICONS.ledger}</button>` : ''}
         ${isStandalone() ? '' : `<button class="icon-btn" data-install title="تثبيت التطبيق" aria-label="تثبيت التطبيق">${ICONS.dl}</button>`}
-        <button class="icon-btn" data-logout title="خروج" aria-label="خروج">${ICONS.out}</button>
+        <button class="icon-btn acct ${st.user.has_code ? '' : 'open'}" data-account title="الحساب والرمز" aria-label="الحساب والرمز">${ICONS.lock}</button>
       </nav></header>`;
   if (!inc) {
     const v = show(`<main class="home">${head}${slotsBar()}
@@ -331,6 +352,7 @@ function bindHome(v, inc) {
     if ('new' in t.dataset) return viewWizard(st.slot);
     if ('logout' in t.dataset) { await api.logout(); st.user = null; st.incs = []; await kvSet('incs', []); return viewAuth(); }
     if ('install' in t.dataset) return install();
+    if ('account' in t.dataset) return viewAccount();
     if (t.dataset.go === 'admin') return viewAdmin();
     if ('settings' in t.dataset) return viewSettings(inc);
     if ('lamp' in t.dataset) {
@@ -495,6 +517,50 @@ function viewSettings(inc) {
         st.incs = st.incs.filter((i) => i.slot !== inc.slot).concat(saved);
         st.preview = null; persistLocal(); viewHome(); toast('انحفظت الإعدادات');
       } catch (x) { toast(x.message); t.disabled = false; }
+    }
+  });
+}
+
+/* ---------- ACCOUNT ---------- */
+function viewAccount() {
+  const u = st.user, has = u.has_code;
+  const v = show(`<main class="sheet">
+    <div class="sheet-head"><button class="icon-btn" data-cancel aria-label="رجوع">${ICONS.x}</button><span class="label">الحساب</span><span></span></div>
+    <div class="sheet-body">
+      <h2>${esc(u.username)}</h2>
+      <div class="lock-state ${has ? 'on' : ''}">${ICONS.lock}<div>
+        <strong>${has ? 'محمي برمز' : 'مفتوح بالاسم'}</strong>
+        <p>${has ? 'ما أحد يقدر يدخل هذا الحساب إلا إذا كتب الرمز الصحيح.' : 'هسه أي واحد يكتب هذا الاسم يدخل لفقاساتك. حط رمز حتى يصير الاسم إلك بس.'}</p>
+      </div></div>
+      <form data-code novalidate>
+        <label class="field"><span class="label">${has ? 'الرمز الجديد' : 'الرمز'} (4 أحرف أو أرقام على الأقل)</span><input name="a" type="password" autocomplete="new-password" minlength="4"></label>
+        <label class="field"><span class="label">اكتب الرمز مرة ثانية</span><input name="b" type="password" autocomplete="new-password"></label>
+        <p class="err" role="alert"></p>
+        <button class="btn" type="submit"><span>${has ? 'غيّر الرمز' : 'احفظ الرمز'}</span><span class="arrow">←</span></button>
+      </form>
+      <p class="form-note">بعد ما تحفظ الرمز، أي جهاز ثاني داخل على حسابك يطلع تلقائياً.</p>
+      ${has ? '<button class="danger" data-clear>شيل الرمز وخلّي الدخول بالاسم بس</button>' : ''}
+      <div style="margin-top:28px"><button class="btn ghost" data-logout><span>تسجيل خروج</span><span class="arrow">${ICONS.out}</span></button></div>
+    </div>
+  </main>`);
+  const done = (profile, msg) => { st.user = { ...st.user, ...profile }; persistLocal(); toast(msg); viewAccount(); };
+  $('[data-code]', v).onsubmit = async (e) => {
+    e.preventDefault();
+    const f = e.target, err = $('.err', f), btn = $('button[type=submit]', f);
+    if (f.a.value.length < 4) return (err.textContent = 'الرمز 4 أحرف أو أرقام على الأقل');
+    if (f.a.value !== f.b.value) return (err.textContent = 'الرمزين مو نفس الشي');
+    btn.disabled = true;
+    try { done(await api.setCode(f.a.value), 'انحفظ الرمز. الاسم صار إلك بس'); }
+    catch (x) { err.textContent = x.message; btn.disabled = false; }
+  };
+  v.addEventListener('click', async (e) => {
+    const t = e.target.closest('button');
+    if (!t) return;
+    if ('cancel' in t.dataset) return viewHome();
+    if ('logout' in t.dataset) { await api.logout(); st.user = null; st.incs = []; await kvSet('incs', []); return viewAuth(); }
+    if ('clear' in t.dataset) {
+      if (!confirm('تشيل الرمز؟ بعدها أي واحد يكتب اسمك يدخل.')) return;
+      try { done(await api.setCode(''), 'انشال الرمز'); } catch (x) { toast(x.message); }
     }
   });
 }
