@@ -133,6 +133,8 @@ function modal(inner) {
   return m;
 }
 
+const BRAND = `<span class="brand"><svg class="mark" viewBox="0 0 40 52" aria-hidden="true"><defs><radialGradient id="bm" cx=".5" cy=".6" r=".7"><stop offset="0" stop-color="#ffe0a0"/><stop offset=".55" stop-color="#ff8a1e"/><stop offset="1" stop-color="#8a2208"/></radialGradient></defs><path d="${EGG_PATH}" fill="url(#bm)"/><circle cx="17" cy="27" r="6" fill="none" stroke="#7a1206" stroke-width="1.6" opacity=".8"/><circle cx="17" cy="27" r="2" fill="#3a0804"/></svg><b>فقّاسة</b></span>`;
+
 /* ---------- AUTH ---------- */
 function dialSVG() {
   let ticks = '';
@@ -150,17 +152,16 @@ function viewAuth() {
   const v = show(`
   <main class="auth">
     <div class="topstrip">
-      <span class="label"><b>FOREGG</b> · نظام الفقاسات</span>
-      ${isStandalone() ? '' : `<button class="dl-chip" data-install>${ICONS.dl}<span>حمّل التطبيق للأندرويد</span></button>`}
+      ${BRAND}
+      ${isStandalone() ? '' : `<button class="dl-chip" data-install>${ICONS.dl}<span>حمّل للأندرويد</span></button>`}
     </div>
     <div class="auth-body">
       <section class="auth-hero">
-        <h1 class="wordmark" aria-label="فقّاسة">فقّاسة</h1>
-        <div class="kicker">
-          <p>كل يوم بيومه: الحرارة، الرطوبة، وقت التقليب، وشكل الجنين تحت الضوء.</p>
-          <span class="led">٣<br><span style="font-size:14px;color:var(--ink-3)">فقاسات</span></span>
-        </div>
-        <div class="porthole-wrap">${dialSVG()}<div class="porthole"><div class="egg-host"></div></div></div>
+        <span class="badge"><i></i>نظام خاص للفقاسات</span>
+        <h1 class="headline"><span>تابع فقاستك يوم بيوم</span><span>حرارة، رطوبة، وتقليب بوقته</span><span class="hl">وشوف الجنين تحت الضوء</span></h1>
+        <p class="sub">14 نوع بيض، 3 فقاسات بنفس الوقت، وتذكير بكل تقليبة.</p>
+        <div class="chips"><span class="neon pink">${ICONS.task.candle} فحص بالضوء ثلاثي الأبعاد</span><span class="neon violet">${ICONS.bell} إشعارات التقليب</span></div>
+        <div class="porthole-wrap">${dialSVG()}<div class="porthole"><div class="egg-host"></div></div><i class="orb o1"></i><i class="orb o2"></i></div>
       </section>
       <section class="auth-form">
         <h2 class="enter-title">شنو اسمك؟</h2>
@@ -228,7 +229,7 @@ function slotsBar() {
 function viewHome(opts = {}) {
   const inc = incBySlot(st.slot);
   const head = `<header class="bar-top">
-      <span class="wordmark">فقّاسة</span>
+      ${BRAND}
       <nav>
         <span class="who">${esc(st.user.display_name || st.user.username)}</span>
         ${st.user.is_admin ? `<button class="icon-btn" data-go="admin" title="لوحة المدير" aria-label="لوحة المدير">${ICONS.ledger}</button>` : ''}
@@ -652,5 +653,22 @@ async function boot(fromLogin = false) {
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js', { type: 'module' }).catch(() => {});
 document.addEventListener('visibilitychange', () => { if (!document.hidden && st.user) { scheduleLocal(); } });
 
-app.innerHTML = '<div class="loading"><span class="wordmark">فقّاسة</span></div>';
+// سماء نجوم خفيفة خلف التطبيق
+(function stars() {
+  const sky = document.createElement('div');
+  sky.className = 'sky';
+  sky.setAttribute('aria-hidden', 'true');
+  for (let layer = 0; layer < 3; layer++) {
+    const i = document.createElement('i'), dots = [];
+    for (let k = 0; k < 45; k++) {
+      const hue = Math.random() < 0.25 ? '255,170,70' : '190,255,225';
+      dots.push(`${(Math.random() * 100).toFixed(2)}vw ${(Math.random() * 200).toFixed(2)}vh 0 ${layer ? 0 : .4}px rgba(${hue},${(0.25 + Math.random() * 0.6).toFixed(2)})`);
+    }
+    i.style.boxShadow = dots.join(',');
+    sky.appendChild(i);
+  }
+  document.body.prepend(sky);
+})();
+
+app.innerHTML = `<div class="loading">${BRAND}</div>`;
 boot();
